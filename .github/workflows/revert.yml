@@ -1,0 +1,32 @@
+name: Revert Commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "要撤销的 commit ID"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Revert commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git revert ${{ github.event.inputs.commit }} --no-edit
+
+      - name: Push revert
+        run: |
+          git push

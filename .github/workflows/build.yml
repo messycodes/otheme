@@ -1,0 +1,39 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant permission
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        env:
+          OTHEME_KEYSTORE_PATH: ${{ github.workspace }}/otheme.jks
+          OTHEME_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          OTHEME_KEY_ALIAS: otheme
+          OTHEME_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OTheme-release
+          path: |
+            app/build/outputs/apk/release/*.apk

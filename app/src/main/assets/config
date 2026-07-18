@@ -1,0 +1,93 @@
+{
+  "applyType": 3,
+  "customThemePath": "",
+  "icons": [
+    {
+      "filePath": "icons",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "icons"
+    },
+    {
+      "filePath": "com.android.launcher",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.launcher"
+    }
+  ],
+  "lock": [
+    {
+      "engineMinVersion": "",
+      "enginePkg": "com.oplus.uiengine",
+      "engineType": "uiengine",
+      "filePath": "lock/",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "lockstyle",
+      "thumbUrl": "https://theme.heytapimage.com/openplatform/share/202407/29/f2722917c31ecc1442f3ccc432333a6a.jpg"
+    }
+  ],
+  "other": [
+    {
+      "filePath": "com.android.contacts_003",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.contacts_003",
+      "themeOsVersion": "15000",
+      "themeVersion": "003"
+    },
+    {
+      "filePath": "assets",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "assets",
+      "themeOsVersion": "15000",
+      "themeVersion": ""
+    },
+    {
+      "filePath": "com.android.systemui",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.systemui",
+      "themeOsVersion": "15000",
+      "themeVersion": "001"
+    },
+    {
+      "filePath": "com.android.incallui_003",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.incallui_003",
+      "themeOsVersion": "15000",
+      "themeVersion": "003"
+    },
+    {
+      "filePath": "com.android.settings",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.settings",
+      "themeOsVersion": "15000",
+      "themeVersion": "001"
+    },
+    {
+      "filePath": "com.heytap.mcs",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.heytap.mcs",
+      "themeOsVersion": "15000",
+      "themeVersion": "001"
+    },
+    {
+      "filePath": "com.android.mms_006",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "com.android.mms_006",
+      "themeOsVersion": "15000",
+      "themeVersion": "006"
+    }
+  ],
+  "retainDirRoot": [
+    "applying",
+    "ring",
+    "audio",
+    "video",
+    "store",
+    "lockpet"
+  ],
+  "wallpaper": [
+    {
+      "filePath": "wallpaper",
+      "fromPkg": "DAFANGCON73311EA51D82C92M6WE6SQJ",
+      "name": "wallpaper"
+    }
+  ]
+}
