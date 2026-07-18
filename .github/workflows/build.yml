@@ -26,9 +26,9 @@ jobs:
       - name: Build Release APK
         env:
           OTHEME_KEYSTORE_PATH: ${{ github.workspace }}/otheme.jks
-          OTHEME_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          OTHEME_KEYSTORE_PASSWORD: "3442681588Mc/"
           OTHEME_KEY_ALIAS: otheme
-          OTHEME_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          OTHEME_KEY_PASSWORD: "3442681588Mc/"
         run: ./gradlew assembleRelease
 
       - name: Upload APK
