@@ -67,8 +67,8 @@ object SuFileOperations {
             val errThread = Thread {
                 try {
                     process.errorStream.bufferedReader().forEachLine { line ->
-                        Log.e(TAG, "[ERR] $line")
-                        onLog("[ERR] $line")
+                        Log.d(TAG, "[OUT] $line")
+                        onLog(line)
                     }
                 } catch (_: Exception) { }
             }
