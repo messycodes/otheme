@@ -86,7 +86,6 @@ fun ThemePreviewScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                clearAppCache(context)
                                 installLogs = listOf()
                                 installSucceeded = null
                                 showInstallLogDialog = true
