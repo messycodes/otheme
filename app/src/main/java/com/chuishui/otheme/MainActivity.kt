@@ -319,7 +319,6 @@ class MainActivity : ComponentActivity() {
         var statusMessage by remember { mutableStateOf("") }
         var showErrorDialog by remember { mutableStateOf(false) }
         var errorMessage by remember { mutableStateOf("") }
-        var showRestoreInfo by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
 
@@ -537,23 +536,12 @@ class MainActivity : ComponentActivity() {
                                     backupLauncher.launch("theme_backup_$timestamp.theme")
                                 }
                             )
-                            
-                            // 恢复主题提示卡片
-                            ActionCard(
-                                title = "恢复系统主题",
-                                description = "点击查看恢复方法",
-                                icon = Icons.Default.Restore,
-                                enabled = true,
-                                onClick = {
-                                    showRestoreInfo = true
-                                }
-                            )
                         }
                     }
                 }
             }
         }
-        
+
         // 错误对话框
         if (showErrorDialog) {
             AlertDialog(
@@ -574,50 +562,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             )
-        }
-        
-        // 恢复主题提示对话框（带模糊）
-        if (showRestoreInfo) {
-            BlurDialog {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        shape = MaterialTheme.shapes.extraLarge,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Text(
-                                text = "恢复系统主题",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "请使用官方主题商店应用恢复系统主题。\n\n在主题商店中选择并应用任意官方主题即可恢复系统主题功能。",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TextButton(onClick = { showRestoreInfo = false }) {
-                                    Text("关闭")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
