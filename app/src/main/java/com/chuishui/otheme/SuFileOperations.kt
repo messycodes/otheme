@@ -4,10 +4,7 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 /**
  * 已检测到的 Root 管理方案
@@ -24,7 +21,8 @@ object SuFileOperations {
     private const val TAG = "SuFileOperations"
     private const val THEME_DIR = "/data/theme"
     private const val THEME_INNER_DIR = "/system_ext/media/themeInner"
-    private const val OTHEME_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
+    private const val OTHEME_DIR = "/data/adb/metamodule/mnt/otheme/system_ext/media/themeInner"
+    private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system"
 
     /**
      * 执行 su 命令
@@ -112,10 +110,10 @@ object SuFileOperations {
     }
 
     /**
-     * 检测 /data/adb/otheme/otheme/ 目录是否存在
+     * 检测 OTheme 模块是否已安装（/data/adb/modules/otheme/system/ 存在即已安装）
      */
     fun checkOthemeDir(): Boolean {
-        val (exitCode, _) = execSuCommand("[ -d '$OTHEME_DIR' ] && echo OK")
+        val (exitCode, _) = execSuCommand("[ -d '$OTHEME_SYSTEM_DIR' ] && echo OK")
         return exitCode == 0
     }
 
@@ -153,114 +151,70 @@ object SuFileOperations {
     }
 
     /**
-     * 将 .theme 文件打包为标准 Magisk 模块格式（module.prop +
-     * system_ext/media/themeInner/<file>），并通过对应 Root 管理器的
-     * 模块管理接口安装。相比直接 remount /system_ext 写入，模块安装依赖
-     * Root 管理器自身的 overlay 挂载机制，不需要手动改写系统分区，更安全。
+     * 从 assets 安装 OTheme 附加模块
      */
-    fun installThemeAsModule(context: Context, themePath: String, onLog: (String) -> Unit): String? {
-        onLog("[+] 检测 Root 环境...")
-        val rootType = detectRootType()
-
-        when (rootType) {
-            RootType.KERNELSU -> onLog("[+] 检测到 KernelSU")
-            RootType.MAGISK -> onLog("[+] 检测到 Magisk")
-            RootType.APATCH -> onLog("[+] 检测到 APatch")
-            RootType.UNKNOWN -> onLog("[!] 未检测到 Magisk / KernelSU / APatch")
-        }
-
-        if (rootType == RootType.UNKNOWN) {
-            return "未检测到受支持的 Root 管理器（Magisk / KernelSU / APatch）"
-        }
-
-        var moduleZip: File? = null
+    fun installModuleFromAssets(context: Context, onLog: (String) -> Unit): String? {
         return try {
-            val themeFile = File(themePath)
-            val fileName = themeFile.name
-            onLog("[+] 打包模块 (otheme)...")
-            val zip = File(context.cacheDir, "OThemeinstall.zip")
-            moduleZip = zip
-            ZipOutputStream(FileOutputStream(zip)).use { zos ->
-                val prop = buildString {
-                    appendLine("id=otheme")
-                    appendLine("name=OTheme - 注入系统主题附加模块")
-                    appendLine("version=v2")
-                    appendLine("versionCode=1")
-                    appendLine("author=吹水明月")
-                    appendLine("description=Injected by OTheme")
+            onLog("[+] 正在从内置资源安装 OTheme 模块...")
+
+            val assetFile = "otheme_install.zip"
+            val cacheFile = File(context.cacheDir, assetFile)
+
+            context.assets.open(assetFile).use { input ->
+                cacheFile.outputStream().use { output ->
+                    input.copyTo(output)
                 }
-                zos.putNextEntry(ZipEntry("module.prop"))
-                zos.write(prop.toByteArray())
-                zos.closeEntry()
-
-                val postFsData = """#!/system/bin/sh
-MODDIR=${'$'}{0%/*}
-mount --bind ${'$'}MODDIR/system_ext/media/themeInner/ /system_ext/media/themeInner/
-"""
-                val postFsEntry = ZipEntry("post-fs-data.sh")
-                zos.putNextEntry(postFsEntry)
-                zos.write(postFsData.toByteArray())
-                zos.closeEntry()
-
-                zos.putNextEntry(ZipEntry("system_ext/media/themeInner/$fileName"))
-                FileInputStream(themeFile).use { it.copyTo(zos) }
-                zos.closeEntry()
             }
-            onLog("[+] 模块打包完成: ${zip.name}")
+
+            onLog("[+] 检测 Root 环境...")
+            val rootType = detectRootType()
 
             val installCmd = when (rootType) {
-                RootType.MAGISK -> "magisk --install-module '${zip.absolutePath}'"
-                RootType.KERNELSU -> "ksud module install '${zip.absolutePath}'"
-                RootType.APATCH -> "apd module install '${zip.absolutePath}'"
-                RootType.UNKNOWN -> return "未检测到受支持的 Root 管理器"
+                RootType.MAGISK -> "magisk --install-module '${cacheFile.absolutePath}'"
+                RootType.KERNELSU -> "ksud module install '${cacheFile.absolutePath}'"
+                RootType.APATCH -> "apd module install '${cacheFile.absolutePath}'"
+                RootType.UNKNOWN -> return "未检测到受支持的 Root 管理器（Magisk / KernelSU / APatch）"
             }
 
-            onLog("[+] 正在安装模块...")
+            onLog("[+] 正在安装 OTheme 模块...")
             val exitCode = execSuCommandStreaming(installCmd) { line -> onLog(line) }
 
+            cacheFile.delete()
+
             if (exitCode == 0) {
-                onLog("[OK] 模块安装成功")
-                onLog("[!] 需要重启设备使模块生效")
+                onLog("[OK] OTheme 模块安装成功")
                 null
             } else {
-                val error = "模块安装失败（退出码 $exitCode）"
-                onLog("[FAIL] $error")
-                error
+                "OTheme 模块安装失败（退出码 $exitCode）"
             }
         } catch (e: Exception) {
-            val error = "安装模块出错: ${e.message}"
+            val error = "安装 OTheme 模块失败: ${e.message}"
             Log.e(TAG, error, e)
             onLog("[ERR] $error")
             error
-        } finally {
-            moduleZip?.delete()
         }
     }
 
     /**
      * 安装主题的统一入口：
-     * 1. 若 /data/adb/otheme/otheme/ 存在，直接挂载读写写入
-     * 2. 否则优先以 Root 模块方式安全注入
-     * 3. 若模块安装失败，回退为直接写入 /system_ext/media/themeInner
+     * 1. 检测 OTheme 模块是否已安装（/data/adb/modules/otheme/system/）
+     * 2. 若未安装，从 assets 安装模块并提示用户重启
+     * 3. 若已安装，通过 otheme 模块目录直接写入主题文件
      */
     fun installThemeWithLog(context: Context, themePath: String, onLog: (String) -> Unit): String? {
-        if (checkOthemeDir()) {
-            onLog("[+] 检测到 otheme 目录，优先使用直接写入模式")
-            val othemeError = installThemeToOthemeDir(themePath, onLog)
-            if (othemeError == null) {
-                return null
+        if (!checkOthemeDir()) {
+            onLog("[!] 未检测到 OTheme 模块")
+            onLog("[+] 正在安装 OTheme 模块...")
+            val moduleError = installModuleFromAssets(context, onLog)
+            if (moduleError == null) {
+                onLog("[!] 模块安装完成，请重启设备后再次安装主题")
+                return "OTheme 模块已安装，请重启设备后再次安装主题"
             }
-            onLog("[!] otheme 目录写入失败，尝试模块安装...")
+            return moduleError
         }
 
-        val moduleError = installThemeAsModule(context, themePath, onLog)
-        if (moduleError == null) {
-            return null
-        }
-
-        onLog("[!] 模块安装不可用，回退为直接注入模式")
-        val fallbackError = installTheme(context, themePath, onLog)
-        return fallbackError
+        onLog("[+] 检测到 OTheme 模块，使用直接写入模式")
+        return installThemeToOthemeDir(themePath, onLog)
     }
 
     /**
@@ -320,58 +274,6 @@ mount --bind ${'$'}MODDIR/system_ext/media/themeInner/ /system_ext/media/themeIn
         } catch (e: Exception) {
             val error = "Error installing theme: ${e.message}"
             Log.e(TAG, error, e)
-            error
-        }
-    }
-
-    /**
-     * 安装主题（从路径，直接注入，不解包）
-     *
-     * 不再解包主题文件，而是将 .theme 文件原样注入系统内置主题目录
-     * (/system_ext/media/themeInner)，由系统自动识别为内置主题模块。
-     * 这是模块安装失败/不可用时的回退方案，见 [installThemeWithLog]。
-     */
-    fun installTheme(context: Context, themePath: String, onLog: (String) -> Unit = {}): String? {
-        Log.d(TAG, "Installing theme (raw inject) from: $themePath")
-
-        return try {
-            val fileName = File(themePath).name
-            val targetPath = "$THEME_INNER_DIR/$fileName"
-
-            // system_ext 默认只读，安装前需重新挂载为可写
-            onLog("[+] 重新挂载 /system_ext 为可写...")
-            execSuCommand("mount -o rw,remount /system_ext")
-
-            // 确保目标目录存在
-            onLog("[+] 创建目标目录 $THEME_INNER_DIR ...")
-            val (mkdirExit, mkdirOutput) = execSuCommand("mkdir -p $THEME_INNER_DIR")
-            if (mkdirExit != 0) {
-                onLog("[FAIL] $mkdirOutput")
-                return "安装失败: $mkdirOutput"
-            }
-
-            // 原样拷贝 .theme 文件，不做任何解包/转换
-            onLog("[+] 写入 $targetPath ...")
-            val (copyExit, copyOutput) = execSuCommand("cp -f ${shellEscape(themePath)} ${shellEscape(targetPath)}")
-            if (copyExit != 0) {
-                onLog("[FAIL] $copyOutput")
-                return "安装失败: $copyOutput"
-            }
-
-            // 设置系统文件通用权限（root:root, 644）
-            execSuCommand("chmod 644 ${shellEscape(targetPath)}")
-            execSuCommand("chown root:root ${shellEscape(targetPath)}")
-
-            // 尝试恢复只读挂载状态（失败不影响安装结果）
-            execSuCommand("mount -o ro,remount /system_ext")
-
-            Log.d(TAG, "Theme injected into $targetPath")
-            onLog("[OK] 已写入 $targetPath")
-            null
-        } catch (e: Exception) {
-            val error = "Error installing theme: ${e.message}"
-            Log.e(TAG, error, e)
-            onLog("[ERR] $error")
             error
         }
     }

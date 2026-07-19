@@ -299,8 +299,7 @@ private suspend fun installTheme(
 ) {
 
     try {
-        // SU 模式：优先安全地以 Root 模块（Magisk/KernelSU/APatch）方式安装，
-        // 无受支持的模块管理器时回退为直接注入
+        // SU 模式：需要预装 OTheme 模块，通过模块目录注入主题
         val error = withContext(Dispatchers.IO) {
             try {
                 Log.d("ThemePreviewScreen", "Installing theme (SU)")
