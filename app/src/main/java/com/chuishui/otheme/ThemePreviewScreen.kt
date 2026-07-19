@@ -100,6 +100,7 @@ fun ThemePreviewScreen(
                                         if (!success) {
                                             appendLog("[FAIL] $message")
                                         }
+                                        clearAppCache(context)
                                     }
                                 )
                             }
