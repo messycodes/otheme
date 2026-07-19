@@ -177,6 +177,26 @@ fun ThemePreviewScreen(
                         onInstallComplete(installLogs.lastOrNull { it.startsWith("[FAIL]") || it.startsWith("[ERR]") } ?: "安装失败")
                         navController.navigateUp()
                     }
+                },
+                onSaveLog = {
+                    scope.launch {
+                        try {
+                            val logDir = context.getExternalFilesDir(null) ?: context.cacheDir
+                            val logFile = java.io.File(logDir, "otheme_install_${System.currentTimeMillis()}.log")
+                            logFile.writeText(installLogs.joinToString("\n"))
+                            android.widget.Toast.makeText(
+                                context,
+                                "日志已保存: ${logFile.absolutePath}",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "保存日志失败: ${e.message}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
             )
         }
@@ -325,7 +345,8 @@ private fun InstallLogDialog(
     logs: List<String>,
     isRunning: Boolean,
     succeeded: Boolean?,
-    onContinue: () -> Unit
+    onContinue: () -> Unit,
+    onSaveLog: () -> Unit
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(logs.size) {
@@ -401,8 +422,13 @@ private fun InstallLogDialog(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Arrangement.End)
                     ) {
+                        if (!isRunning && succeeded == false) {
+                            OutlinedButton(onClick = onSaveLog) {
+                                Text("保存日志")
+                            }
+                        }
                         Button(
                             onClick = onContinue,
                             enabled = !isRunning
