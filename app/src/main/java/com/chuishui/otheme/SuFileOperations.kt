@@ -20,7 +20,6 @@ enum class RootType {
 object SuFileOperations {
     private const val TAG = "SuFileOperations"
     private const val THEME_DIR = "/data/theme"
-    private const val THEME_INNER_DIR = "/system_ext/media/themeInner"
     private const val OTHEME_DIR = "/data/adb/metamodule/mnt/otheme/system_ext/media/themeInner"
     private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system"
 
@@ -300,16 +299,16 @@ object SuFileOperations {
     }
 
     /**
-     * 获取 /system_ext/media/themeInner/ 下所有 .theme 文件的 themeInfo.xml，
+     * 获取 otheme 模块目录下所有 .theme 文件的 themeInfo.xml，
      * 返回 (文件名, ThemeInfo) 列表
      */
     fun getInstalledThemeList(): List<Pair<String, ThemeInfo?>> {
-        Log.d(TAG, "Listing installed themes from $THEME_INNER_DIR")
+        Log.d(TAG, "Listing installed themes from $OTHEME_DIR")
 
         return try {
-            val (exitCode, output) = execSuCommand("ls '$THEME_INNER_DIR'/*.theme 2>/dev/null")
+            val (exitCode, output) = execSuCommand("ls '$OTHEME_DIR'/*.theme 2>/dev/null")
             if (exitCode != 0 || output.isBlank()) {
-                Log.d(TAG, "No themes found in $THEME_INNER_DIR")
+                Log.d(TAG, "No themes found in $OTHEME_DIR")
                 return emptyList()
             }
 
@@ -333,7 +332,7 @@ object SuFileOperations {
      */
     fun deleteTheme(fileName: String): String? {
         Log.d(TAG, "Deleting theme: $fileName")
-        val targetPath = "$THEME_INNER_DIR/$fileName"
+        val targetPath = "$OTHEME_DIR/$fileName"
         val (exitCode, output) = execSuCommand("rm -f ${shellEscape(targetPath)}")
         return if (exitCode == 0) null else "删除失败: $output"
     }
