@@ -29,6 +29,10 @@ object SuFileOperations {
     /**
      * 执行 su 命令
      */
+    private fun shellEscape(path: String): String {
+        return "'" + path.replace("'", "'\\''") + "'"
+    }
+
     private fun execSuCommand(command: String): Pair<Int, String> {
         return try {
             Log.d(TAG, "Executing: $command")
@@ -128,14 +132,14 @@ object SuFileOperations {
             onLog("[+] 检测到 otheme 模块目录，使用直接写入模式...")
 
             onLog("[+] 写入 $targetPath ...")
-            val (copyExit, copyOutput) = execSuCommand("cp -f '$themePath' '$targetPath'")
+            val (copyExit, copyOutput) = execSuCommand("cp -f ${shellEscape(themePath)} ${shellEscape(targetPath)}")
             if (copyExit != 0) {
                 onLog("[FAIL] $copyOutput")
                 return "安装失败: $copyOutput"
             }
 
-            execSuCommand("chmod 644 '$targetPath'")
-            execSuCommand("chown root:root '$targetPath'")
+            execSuCommand("chmod 644 ${shellEscape(targetPath)}")
+            execSuCommand("chown root:root ${shellEscape(targetPath)}")
 
             Log.d(TAG, "Theme injected into $targetPath")
             onLog("[OK] 已写入 $targetPath")
@@ -345,15 +349,15 @@ object SuFileOperations {
 
             // 原样拷贝 .theme 文件，不做任何解包/转换
             onLog("[+] 写入 $targetPath ...")
-            val (copyExit, copyOutput) = execSuCommand("cp -f '$themePath' '$targetPath'")
+            val (copyExit, copyOutput) = execSuCommand("cp -f ${shellEscape(themePath)} ${shellEscape(targetPath)}")
             if (copyExit != 0) {
                 onLog("[FAIL] $copyOutput")
                 return "安装失败: $copyOutput"
             }
 
             // 设置系统文件通用权限（root:root, 644）
-            execSuCommand("chmod 644 '$targetPath'")
-            execSuCommand("chown root:root '$targetPath'")
+            execSuCommand("chmod 644 ${shellEscape(targetPath)}")
+            execSuCommand("chown root:root ${shellEscape(targetPath)}")
 
             // 尝试恢复只读挂载状态（失败不影响安装结果）
             execSuCommand("mount -o ro,remount /system_ext")
@@ -407,7 +411,7 @@ object SuFileOperations {
             val files = output.lines().filter { it.isNotBlank() }
             files.map { filePath ->
                 val fileName = filePath.substringAfterLast("/")
-                val (_, xmlOutput) = execSuCommand("unzip -p '$filePath' themeInfo.xml 2>/dev/null")
+                val (_, xmlOutput) = execSuCommand("unzip -p ${shellEscape(filePath)} themeInfo.xml 2>/dev/null")
                 val themeInfo = if (xmlOutput.isNotBlank()) {
                     ThemeParser.parseThemeInfoFromXml(xmlOutput)
                 } else null
