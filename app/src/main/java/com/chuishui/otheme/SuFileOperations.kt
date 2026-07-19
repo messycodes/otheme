@@ -424,6 +424,16 @@ object SuFileOperations {
     }
 
     /**
+     * 删除已安装的主题文件
+     */
+    fun deleteTheme(fileName: String): String? {
+        Log.d(TAG, "Deleting theme: $fileName")
+        val targetPath = "$THEME_INNER_DIR/$fileName"
+        val (exitCode, output) = execSuCommand("rm -f ${shellEscape(targetPath)}")
+        return if (exitCode == 0) null else "删除失败: $output"
+    }
+
+    /**
      * 检查指定应用是否已安装
      * 优先通过 su shell 检查，失败时兜底使用 Android PackageManager API
      */

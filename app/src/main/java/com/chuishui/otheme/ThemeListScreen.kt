@@ -1,6 +1,7 @@
 package com.chuishui.otheme
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,7 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ThemeListScreen(
     navController: NavController,
@@ -53,8 +57,9 @@ fun ThemeListScreen(
     var themeList by remember { mutableStateOf<List<Pair<String, ThemeInfo?>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var deleteTarget by remember { mutableStateOf<Pair<String, ThemeInfo?>?>(null) }
 
-    LaunchedEffect(Unit) {
+    fun refreshList() {
         scope.launch {
             isLoading = true
             try {
@@ -64,6 +69,8 @@ fun ThemeListScreen(
                 themeList = list
                 if (list.isEmpty()) {
                     errorMessage = "未找到已安装的主题"
+                } else {
+                    errorMessage = null
                 }
             } catch (e: Exception) {
                 errorMessage = "读取主题列表失败：${e.message}"
@@ -71,6 +78,10 @@ fun ThemeListScreen(
                 isLoading = false
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshList()
     }
 
     Scaffold(
@@ -135,6 +146,9 @@ fun ThemeListScreen(
                                 onClick = {
                                     onPendingThemeInfo(themeInfo)
                                     navController.navigate("theme_detail")
+                                },
+                                onLongClick = {
+                                    deleteTarget = fileName to themeInfo
                                 }
                             )
                         }
@@ -143,18 +157,56 @@ fun ThemeListScreen(
             }
         }
     }
+
+    deleteTarget?.let { (fileName, _) ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = {
+                Text(
+                    text = "删除主题",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("确定要删除「$fileName」吗？此操作不可撤销。")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            SuFileOperations.deleteTheme(fileName)
+                        }
+                        deleteTarget = null
+                        refreshList()
+                    }
+                }) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ThemeListItem(
     fileName: String,
     themeInfo: ThemeInfo?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
