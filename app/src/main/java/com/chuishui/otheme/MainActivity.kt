@@ -319,7 +319,6 @@ class MainActivity : ComponentActivity() {
         var statusMessage by remember { mutableStateOf("") }
         var showErrorDialog by remember { mutableStateOf(false) }
         var errorMessage by remember { mutableStateOf("") }
-        var themeStoreInstalled by remember { mutableStateOf<Boolean?>(null) }
         var showRestoreInfo by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
@@ -437,18 +436,6 @@ class MainActivity : ComponentActivity() {
             // 通知父组件状态变化
             onConnectionStateChange(isConnected, statusMessage)
 
-            // 检查 ThemeStore 是否安装（先检测 heytap，失败再检测 oplus）
-            if (isConnected) {
-                themeStoreInstalled = withContext(Dispatchers.IO) {
-                    try {
-                        SuFileOperations.isPackageInstalled("com.heytap.themestore", context) ||
-                        SuFileOperations.isPackageInstalled("com.oplus.themestore", context)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }
-            
             // 显示返回后的状态消息
             if (pendingStatusMessage.isNotEmpty()) {
                 statusMessage = pendingStatusMessage
@@ -498,30 +485,8 @@ class MainActivity : ComponentActivity() {
                             isConnected = checkSuPermission()
                             statusMessage = if (isConnected) "SU 权限已获取" else "无法获取 Root 权限"
                             onConnectionStateChange(isConnected, statusMessage)
-                            // 重新检查 ThemeStore（先检测 heytap，失败再检测 oplus）
-                            scope.launch {
-                                themeStoreInstalled = withContext(Dispatchers.IO) {
-                                    try {
-                                        SuFileOperations.isPackageInstalled("com.heytap.themestore", context) ||
-                                        SuFileOperations.isPackageInstalled("com.oplus.themestore", context)
-                                    } catch (e: Exception) {
-                                        null
-                                    }
-                                }
-                            }
                         }
                     )
-                    
-                    // ThemeStore 检测卡片
-                    AnimatedVisibility(
-                        visible = isConnected && themeStoreInstalled != null,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        ThemeStoreStatusCard(
-                            isInstalled = themeStoreInstalled == true
-                        )
-                    }
 
                     // 主题信息卡片
                     AnimatedVisibility(
@@ -656,61 +621,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Composable
-    fun ThemeStoreStatusCard(isInstalled: Boolean) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = if (isInstalled)
-                    MaterialTheme.colorScheme.primaryContainer
-                else
-                    MaterialTheme.colorScheme.errorContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isInstalled) Icons.Default.CheckCircle else Icons.Default.Warning,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = if (isInstalled)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onErrorContainer
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isInstalled) "主题商店已安装" else "主题商店未安装",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isInstalled)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        text = if (isInstalled)
-                            "系统主题功能正常，可以安全安装主题"
-                        else
-                            "未检测到主题商店（com.heytap.themestore 或 com.oplus.themestore），禁止安装主题！",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isInstalled)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-        }
-    }
 
     @Composable
     fun ConnectionStatusCard(

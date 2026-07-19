@@ -475,14 +475,9 @@ object SuFileOperations {
             if (exitCode != 0) {
                 return "卸载失败: $output"
             }
-            // 获取主题商店的 UID
-            val (_, uidOutput) = execSuCommand("stat -c '%U:%G' /data/data/com.heytap.themestore 2>/dev/null || echo 'u0_a240:u0_a240'")
-            val themeStoreOwner = uidOutput.trim().split(":").firstOrNull() ?: "u0_a240"
-            val themeStoreGroup = uidOutput.trim().split(":").lastOrNull() ?: "u0_a240"
             // 确保 applying 目录存在并设置 777 权限
             execSuCommand("mkdir -p $THEME_DIR/applying")
             execSuCommand("chmod 777 $THEME_DIR/applying")
-            execSuCommand("chown $themeStoreOwner:$themeStoreGroup $THEME_DIR/applying")
             Log.d(TAG, "Theme uninstalled successfully (config and applying preserved)")
             null
         } catch (e: Exception) {

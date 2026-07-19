@@ -299,20 +299,6 @@ private suspend fun installTheme(
 ) {
 
     try {
-        onLog("[+] 检测主题商店是否已安装...")
-        // 检查 ThemeStore 是否安装（先检测 heytap，失败再检测 oplus）
-        val themeStoreInstalled = withContext(Dispatchers.IO) {
-            SuFileOperations.isPackageInstalled("com.heytap.themestore", context) ||
-            SuFileOperations.isPackageInstalled("com.oplus.themestore", context)
-        }
-
-        if (!themeStoreInstalled) {
-            onLog("[FAIL] 未检测到主题商店（com.heytap.themestore / com.oplus.themestore）")
-            onComplete(false, "检测到系统未安装主题商店\n（com.heytap.themestore 或 com.oplus.themestore）\n\n安装主题将导致系统主题功能彻底失效！\n请先安装主题商店后再进行操作")
-            return
-        }
-        onLog("[+] 主题商店已安装")
-
         // SU 模式：优先安全地以 Root 模块（Magisk/KernelSU/APatch）方式安装，
         // 无受支持的模块管理器时回退为直接注入
         val error = withContext(Dispatchers.IO) {
