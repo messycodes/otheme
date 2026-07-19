@@ -24,6 +24,7 @@ object SuFileOperations {
     private const val TAG = "SuFileOperations"
     private const val THEME_DIR = "/data/theme"
     private const val THEME_INNER_DIR = "/system_ext/media/themeInner"
+    private const val OTHEME_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
 
     /**
      * 执行 su 命令
@@ -103,6 +104,47 @@ object SuFileOperations {
             "MAGISK" -> RootType.MAGISK
             "APATCH" -> RootType.APATCH
             else -> RootType.UNKNOWN
+        }
+    }
+
+    /**
+     * 检测 /data/adb/otheme/otheme/ 目录是否存在
+     */
+    fun checkOthemeDir(): Boolean {
+        val (exitCode, _) = execSuCommand("[ -d '$OTHEME_DIR' ] && echo OK")
+        return exitCode == 0
+    }
+
+    /**
+     * 通过 /data/adb/otheme/otheme/ 路径直接挂载读写添加主题文件
+     */
+    fun installThemeToOthemeDir(themePath: String, onLog: (String) -> Unit): String? {
+        Log.d(TAG, "Installing theme via otheme dir: $themePath")
+
+        return try {
+            val fileName = File(themePath).name
+            val targetPath = "$OTHEME_DIR/$fileName"
+
+            onLog("[+] 检测到 otheme 模块目录，使用直接写入模式...")
+
+            onLog("[+] 写入 $targetPath ...")
+            val (copyExit, copyOutput) = execSuCommand("cp -f '$themePath' '$targetPath'")
+            if (copyExit != 0) {
+                onLog("[FAIL] $copyOutput")
+                return "安装失败: $copyOutput"
+            }
+
+            execSuCommand("chmod 644 '$targetPath'")
+            execSuCommand("chown root:root '$targetPath'")
+
+            Log.d(TAG, "Theme injected into $targetPath")
+            onLog("[OK] 已写入 $targetPath")
+            null
+        } catch (e: Exception) {
+            val error = "写入 otheme 目录失败: ${e.message}"
+            Log.e(TAG, error, e)
+            onLog("[ERR] $error")
+            error
         }
     }
 
@@ -189,10 +231,21 @@ object SuFileOperations {
     }
 
     /**
-     * 安装主题的统一入口：优先以 Root 模块方式安全注入；若设备未安装
-     * Magisk / KernelSU / APatch，则回退为直接写入 /system_ext/media/themeInner。
+     * 安装主题的统一入口：
+     * 1. 若 /data/adb/otheme/otheme/ 存在，直接挂载读写写入
+     * 2. 否则优先以 Root 模块方式安全注入
+     * 3. 若模块安装失败，回退为直接写入 /system_ext/media/themeInner
      */
     fun installThemeWithLog(context: Context, themePath: String, onLog: (String) -> Unit): String? {
+        if (checkOthemeDir()) {
+            onLog("[+] 检测到 otheme 目录，优先使用直接写入模式")
+            val othemeError = installThemeToOthemeDir(themePath, onLog)
+            if (othemeError == null) {
+                return null
+            }
+            onLog("[!] otheme 目录写入失败，尝试模块安装...")
+        }
+
         val moduleError = installThemeAsModule(context, themePath, onLog)
         if (moduleError == null) {
             return null
@@ -334,6 +387,35 @@ object SuFileOperations {
         } catch (e: Exception) {
             Log.e(TAG, "Error reading themeInfo.xml: ${e.message}", e)
             null
+        }
+    }
+
+    /**
+     * 获取 /system_ext/media/themeInner/ 下所有 .theme 文件的 themeInfo.xml，
+     * 返回 (文件名, ThemeInfo) 列表
+     */
+    fun getInstalledThemeList(): List<Pair<String, ThemeInfo?>> {
+        Log.d(TAG, "Listing installed themes from $THEME_INNER_DIR")
+
+        return try {
+            val (exitCode, output) = execSuCommand("ls '$THEME_INNER_DIR'/*.theme 2>/dev/null")
+            if (exitCode != 0 || output.isBlank()) {
+                Log.d(TAG, "No themes found in $THEME_INNER_DIR")
+                return emptyList()
+            }
+
+            val files = output.lines().filter { it.isNotBlank() }
+            files.map { filePath ->
+                val fileName = filePath.substringAfterLast("/")
+                val (_, xmlOutput) = execSuCommand("unzip -p '$filePath' themeInfo.xml 2>/dev/null")
+                val themeInfo = if (xmlOutput.isNotBlank()) {
+                    ThemeParser.parseThemeInfoFromXml(xmlOutput)
+                } else null
+                fileName to themeInfo
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error listing installed themes: ${e.message}", e)
+            emptyList()
         }
     }
 

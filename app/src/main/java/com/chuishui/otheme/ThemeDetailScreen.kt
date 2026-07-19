@@ -16,35 +16,38 @@ import kotlinx.coroutines.withContext
 
 /**
  * 主题信息详情界面（查看已安装主题）
+ * @param themeInfo 外部传入的主题信息（从列表点击进入时使用），为 null 时从系统读取
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeDetailScreen(
-    navController: NavController
+    navController: NavController,
+    themeInfo: ThemeInfo? = null
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var themeInfo by remember { mutableStateOf<ThemeInfo?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var loadedThemeInfo by remember { mutableStateOf(themeInfo) }
+    var isLoading by remember { mutableStateOf(themeInfo == null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        scope.launch {
-            isLoading = true
-            try {
-                val xmlContent = withContext(Dispatchers.IO) {
-                    SuFileOperations.getInstalledThemeInfo()
-                }
+        if (themeInfo == null) {
+            scope.launch {
+                isLoading = true
+                try {
+                    val xmlContent = withContext(Dispatchers.IO) {
+                        SuFileOperations.getInstalledThemeInfo()
+                    }
 
-                if (xmlContent != null) {
-                    themeInfo = ThemeParser.parseThemeInfoFromXml(xmlContent)
-                } else {
-                    errorMessage = "未找到主题信息文件"
+                    if (xmlContent != null) {
+                        loadedThemeInfo = ThemeParser.parseThemeInfoFromXml(xmlContent)
+                    } else {
+                        errorMessage = "未找到主题信息文件"
+                    }
+                } catch (e: Exception) {
+                    errorMessage = "读取主题信息失败：${e.message}"
+                } finally {
+                    isLoading = false
                 }
-            } catch (e: Exception) {
-                errorMessage = "读取主题信息失败：${e.message}"
-            } finally {
-                isLoading = false
             }
         }
     }
@@ -99,7 +102,7 @@ fun ThemeDetailScreen(
                     }
                 }
                 else -> {
-                    ThemeDetailContent(themeInfo = themeInfo)
+                    ThemeDetailContent(themeInfo = loadedThemeInfo)
                 }
             }
         }

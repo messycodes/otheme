@@ -138,6 +138,31 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(
+                        "theme_list",
+                        enterTransition = {
+                            slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(300)
+                            ) + scaleIn(
+                                initialScale = 0.95f,
+                                animationSpec = tween(300)
+                            )
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(300)
+                            )
+                        }
+                    ) {
+                        ThemeListScreen(
+                            navController = navController,
+                            onPendingThemeInfo = { info ->
+                                pendingThemeInfo = info
+                            }
+                        )
+                    }
+                    composable(
                         "theme_detail",
                         enterTransition = {
                             slideInHorizontally(
@@ -155,7 +180,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     ) {
-                        ThemeDetailScreen(navController)
+                        val themeInfo = remember { pendingThemeInfo }
+                        ThemeDetailScreen(
+                            navController = navController,
+                            themeInfo = themeInfo
+                        )
                     }
                     composable(
                         "theme_preview",
@@ -368,7 +397,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         // 复制文件到缓存
-                        val tempFile = File(cacheDir, "temp_theme.theme")
+                        val tempFile = File(cacheDir, fileName)
                         contentResolver.openInputStream(uri)?.use { input ->
                             tempFile.outputStream().use { output ->
                                 input.copyTo(output)
@@ -506,7 +535,7 @@ class MainActivity : ComponentActivity() {
                             icon = Icons.Default.Info,
                             enabled = true,
                             onClick = {
-                                navController.navigate("theme_detail")
+                                navController.navigate("theme_list")
                             }
                         )
                     }

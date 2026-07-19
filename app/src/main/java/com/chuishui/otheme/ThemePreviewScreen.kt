@@ -266,9 +266,7 @@ fun ThemePreviewScreen(
 private fun clearAppCache(context: android.content.Context) {
     try {
         context.cacheDir.listFiles()?.forEach { file ->
-            if (file.name != "temp_theme.theme") {
-                file.deleteRecursively()
-            }
+            file.deleteRecursively()
         }
     } catch (_: Exception) { }
 }
