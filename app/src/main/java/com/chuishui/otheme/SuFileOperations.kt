@@ -198,7 +198,6 @@ MODDIR=${'$'}{0%/*}
 mount --bind ${'$'}MODDIR/system_ext/media/themeInner/ /system_ext/media/themeInner/
 """
                 val postFsEntry = ZipEntry("post-fs-data.sh")
-                postFsEntry.setUnixMode(0x755)
                 zos.putNextEntry(postFsEntry)
                 zos.write(postFsData.toByteArray())
                 zos.closeEntry()
@@ -544,3 +543,4 @@ mount --bind ${'$'}MODDIR/system_ext/media/themeInner/ /system_ext/media/themeIn
             emptyList()
         }
     }
+}
