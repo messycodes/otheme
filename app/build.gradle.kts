@@ -13,8 +13,8 @@ android {
         applicationId = "com.chuishui.otheme"
         minSdk = 30
         targetSdk = 37
-        versionCode = 128
-        versionName = "1.2.9"
+        versionCode = 195
+        versionName = "1.9.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

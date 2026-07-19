@@ -177,26 +177,30 @@ object SuFileOperations {
         return try {
             val themeFile = File(themePath)
             val fileName = themeFile.name
-            val moduleId = "otheme_" + fileName
-                .substringBeforeLast(".")
-                .lowercase()
-                .replace(Regex("[^a-z0-9_]"), "_")
-                .ifBlank { "theme" }
-
-            onLog("[+] 打包模块 ($moduleId)...")
-            val zip = File(context.cacheDir, "$moduleId.zip")
+            onLog("[+] 打包模块 (otheme)...")
+            val zip = File(context.cacheDir, "OThemeinstall.zip")
             moduleZip = zip
             ZipOutputStream(FileOutputStream(zip)).use { zos ->
                 val prop = buildString {
-                    appendLine("id=$moduleId")
-                    appendLine("name=OTheme - $fileName")
-                    appendLine("version=v1")
+                    appendLine("id=otheme")
+                    appendLine("name=OTheme - 注入系统主题附加模块")
+                    appendLine("version=v2")
                     appendLine("versionCode=1")
-                    appendLine("author=OTheme")
-                    appendLine("description=Injected by OTheme: $fileName")
+                    appendLine("author=吹水明月")
+                    appendLine("description=Injected by OTheme")
                 }
                 zos.putNextEntry(ZipEntry("module.prop"))
                 zos.write(prop.toByteArray())
+                zos.closeEntry()
+
+                val postFsData = """#!/system/bin/sh
+MODDIR=${0%/*}
+mount --bind $MODDIR/system_ext/media/themeInner/ /system_ext/media/themeInner/
+"""
+                val postFsEntry = ZipEntry("post-fs-data.sh")
+                postFsEntry.unixMode = 0x755
+                zos.putNextEntry(postFsEntry)
+                zos.write(postFsData.toByteArray())
                 zos.closeEntry()
 
                 zos.putNextEntry(ZipEntry("system_ext/media/themeInner/$fileName"))
