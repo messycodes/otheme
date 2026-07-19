@@ -194,8 +194,8 @@ object SuFileOperations {
                 zos.closeEntry()
 
                 val postFsData = """#!/system/bin/sh
-MODDIR=${0%/*}
-mount --bind $MODDIR/system_ext/media/themeInner/ /system_ext/media/themeInner/
+MODDIR=\${0%/*}
+mount --bind \$MODDIR/system_ext/media/themeInner/ /system_ext/media/themeInner/
 """
                 val postFsEntry = ZipEntry("post-fs-data.sh")
                 postFsEntry.unixMode = 0x755
