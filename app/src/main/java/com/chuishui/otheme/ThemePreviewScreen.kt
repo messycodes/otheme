@@ -422,7 +422,7 @@ private fun InstallLogDialog(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Arrangement.End)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                     ) {
                         if (!isRunning && succeeded == false) {
                             OutlinedButton(onClick = onSaveLog) {
