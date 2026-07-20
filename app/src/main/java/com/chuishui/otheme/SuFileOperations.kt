@@ -20,8 +20,8 @@ enum class RootType {
 object SuFileOperations {
     private const val TAG = "SuFileOperations"
     private const val THEME_DIR = "/data/theme"
-    private const val OTHEME_DIR = "/data/adb/metamodule/mnt/otheme/system_ext/media/themeInner"
-    private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system"
+    private const val OTHEME_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
+    private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
 
     /**
      * 执行 su 命令
@@ -206,8 +206,8 @@ object SuFileOperations {
             onLog("[+] 正在安装 OTheme 模块...")
             val moduleError = installModuleFromAssets(context, onLog)
             if (moduleError == null) {
-                onLog("[!] 模块安装完成，请重启设备后再次安装主题")
-                return "OTheme 模块已安装，请重启设备后再次安装主题"
+                onLog("[OK] 模块安装完成，请重启设备后再次安装主题")
+                return null
             }
             return moduleError
         }
