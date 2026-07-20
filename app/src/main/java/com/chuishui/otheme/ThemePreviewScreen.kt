@@ -35,6 +35,7 @@ fun ThemePreviewScreen(
     var showInstallLogDialog by remember { mutableStateOf(false) }
     var installLogs by remember { mutableStateOf(listOf<String>()) }
     var installSucceeded by remember { mutableStateOf<Boolean?>(null) }
+    var installMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     fun appendLog(line: String) {
@@ -97,6 +98,7 @@ fun ThemePreviewScreen(
                                     onComplete = { success, message ->
                                         isInstalling = false
                                         installSucceeded = success
+                                        installMessage = message
                                         if (!success) {
                                             appendLog("[FAIL] $message")
                                         }
@@ -172,7 +174,12 @@ fun ThemePreviewScreen(
                 onContinue = {
                     showInstallLogDialog = false
                     if (installSucceeded == true) {
-                        showRestartDialog = true
+                        if (installMessage == "MODULE_INSTALLED") {
+                            showRestartDialog = true
+                        } else {
+                            onInstallComplete("主题安装成功！")
+                            navController.navigateUp()
+                        }
                     } else {
                         onInstallComplete(installLogs.lastOrNull { it.startsWith("[FAIL]") || it.startsWith("[ERR]") } ?: "安装失败")
                         navController.navigateUp()
@@ -222,12 +229,12 @@ fun ThemePreviewScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = "安装完成",
+                                text = "模块安装完成",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "主题安装成功！\n\n是否立即重启以应用主题？",
+                                text = "OTheme 模块已安装，请重启设备以激活模块，然后再次安装主题。",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Row(
@@ -238,7 +245,7 @@ fun ThemePreviewScreen(
                                 TextButton(
                                     onClick = {
                                         showRestartDialog = false
-                                        onInstallComplete("主题安装成功！\n请稍后手动重启以应用主题")
+                                        onInstallComplete("模块安装完成，请稍后手动重启以激活模块")
                                         navController.navigateUp()
                                     }
                                 ) {
@@ -313,6 +320,8 @@ private suspend fun installTheme(
 
         if (error == null) {
             onComplete(true, "")
+        } else if (error == "MODULE_INSTALLED") {
+            onComplete(true, "MODULE_INSTALLED")
         } else {
             onComplete(false, error)
         }

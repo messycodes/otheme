@@ -207,7 +207,7 @@ object SuFileOperations {
             val moduleError = installModuleFromAssets(context, onLog)
             if (moduleError == null) {
                 onLog("[OK] 模块安装完成，请重启设备后再次安装主题")
-                return null
+                return "MODULE_INSTALLED"
             }
             return moduleError
         }

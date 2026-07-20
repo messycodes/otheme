@@ -607,13 +607,6 @@ class MainActivity : ComponentActivity() {
                     Button(onClick = onConnect) {
                         Text("连接")
                     }
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "已连接",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
                 }
             }
         }
