@@ -204,8 +204,8 @@ object LogExporter {
     private fun collectLogcat(): String {
         // First try OTheme-specific filter
         val othemeLogcat = execSuCommand("logcat -d -t 1000 | grep -iE 'otheme|SuFileOperations|ThemeParser|ThemeReader|themeInner'")
-        if (omeThemeLogcat.isNotEmpty() && !omeThemeLogcat.startsWith("(error:")) {
-            return "--- OTheme Logcat Entries ---\n$omeThemeLogcat"
+        if (othemeLogcat.isNotEmpty() && !othemeLogcat.startsWith("(error:")) {
+            return "--- OTheme Logcat Entries ---\n$othemeLogcat"
         }
 
         // Fallback to raw logcat
