@@ -124,12 +124,12 @@ object LogExporter {
     }
 
     private fun checkOthemeModule(): Boolean {
-        val (_, output) = execSuCommand("[ -d '$OTHEME_MODULE_DIR' ] && echo INSTALLED || echo NOT_INSTALLED")
+        val output = execSuCommand("[ -d '$OTHEME_MODULE_DIR' ] && echo INSTALLED || echo NOT_INSTALLED")
         return output.trim() == "INSTALLED"
     }
 
     private fun checkPathExists(path: String): Boolean {
-        val (_, output) = execSuCommand("[ -e '$path' ] && echo YES || echo NO")
+        val output = execSuCommand("[ -e '$path' ] && echo YES || echo NO")
         return output.trim() == "YES"
     }
 
