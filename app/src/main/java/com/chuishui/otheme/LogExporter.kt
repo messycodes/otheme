@@ -148,7 +148,14 @@ object LogExporter {
 
     private fun collectModuleLogs(): String {
         val logPaths = listOf(
-            "/data/adb/modules/otheme/install.log",
+            "/data/adb/modules/otheme/post-fs-data.sh.log",
+            "/data/adb/modules/otheme/service.sh.log",
+            "/data/adb/modules/otheme/uninstall.sh.log",
+            "/data/adb/modules/otheme/update.log",
+            "/data/adb/modules/otheme/auto_mount.log",
+            "/data/adb/magisk/adb/modules.log",
+            "/data/adb/ksu/modules.log",
+            "/data/adb/apatch/modules.log",
             "/data/adb/modules/otheme/post-fs-data.log",
             "/data/adb/modules/otheme/service.log"
         )
@@ -167,7 +174,9 @@ object LogExporter {
     private fun collectThemeLogs(): String {
         val logPaths = listOf(
             "/data/theme/install.log",
-            "/data/adb/modules/otheme/system_ext/media/themeInner/install.log"
+            "/data/theme/apply.log",
+            "/data/adb/modules/otheme/system_ext/media/themeInner/install.log",
+            "/data/adb/modules/otheme/system_ext/media/themeInner/theme.log"
         )
         val sb = StringBuilder()
         for (path in logPaths) {
@@ -178,10 +187,28 @@ object LogExporter {
                 sb.appendLine()
             }
         }
+
+        // Fallback: pull OTheme-related logcat entries if no dedicated log files exist
+        if (sb.isEmpty()) {
+            sb.appendLine("[No dedicated log files found, using filtered logcat entries]")
+            sb.appendLine()
+            val logcat = execSuCommand("logcat -d -t 200 | grep -iE 'otheme|theme|module|SuFileOperations|ThemeParser'")
+            if (logcat.isNotEmpty() && !logcat.startsWith("(error:")) {
+                sb.appendLine(logcat)
+            }
+        }
+
         return sb.toString().trim()
     }
 
     private fun collectLogcat(): String {
+        // First try OTheme-specific filter
+        val othemeLogcat = execSuCommand("logcat -d -t 1000 | grep -iE 'otheme|SuFileOperations|ThemeParser|ThemeReader|themeInner'")
+        if (omeThemeLogcat.isNotEmpty() && !omeThemeLogcat.startsWith("(error:")) {
+            return "--- OTheme Logcat Entries ---\n$omeThemeLogcat"
+        }
+
+        // Fallback to raw logcat
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "logcat -d -t 500 *:V"))
             val reader = BufferedReader(InputStreamReader(process.inputStream))

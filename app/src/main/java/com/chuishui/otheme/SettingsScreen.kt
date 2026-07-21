@@ -413,7 +413,7 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .clickable {
                         scope.launch {
-                            Toast.makeText(context, "Generating log...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "正在生成日志...", Toast.LENGTH_SHORT).show()
                             val logFile = withContext(Dispatchers.IO) {
                                 LogExporter.exportToFile(context)
                             }
@@ -425,10 +425,10 @@ fun SettingsScreen(
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_SUBJECT, "OTheme Diagnostic Log")
+                                putExtra(Intent.EXTRA_SUBJECT, "OTheme 诊断日志")
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Export Log"))
+                            context.startActivity(Intent.createChooser(shareIntent, "导出日志"))
                         }
                     },
                 shape = MaterialTheme.shapes.large,
@@ -451,12 +451,12 @@ fun SettingsScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Export Log",
+                            text = "导出日志",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Export diagnostic log for troubleshooting",
+                            text = "导出诊断日志用于问题排查",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
