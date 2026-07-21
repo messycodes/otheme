@@ -3,8 +3,11 @@ package com.chuishui.otheme
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.window.OnBackAnimationCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -79,6 +82,53 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Android 14+ 预测性返回手势动画
+        if (Build.VERSION.SDK_INT >= 34) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                object : OnBackAnimationCallback {
+                    override fun onBackStarted(backEvent: android.window.BackEvent) {
+                        // 用户开始滑动返回手势
+                        Log.d(TAG, "Back gesture started")
+                    }
+
+                    override fun onBackProgressed(backEvent: android.window.BackEvent) {
+                        // 根据返回手势进度缩放页面
+                        val progress = backEvent.progress
+                        val decorView = window.decorView
+                        decorView.scaleX = 1 - progress * 0.05f
+                        decorView.scaleY = 1 - progress * 0.05f
+                        decorView.alpha = 1 - progress * 0.2f
+                    }
+
+                    override fun onBackInvoked() {
+                        // 用户完成了返回手势，执行返回操作
+                        Log.d(TAG, "Back gesture completed")
+                        val decorView = window.decorView
+                        decorView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+
+                    override fun onBackCancelled() {
+                        // 用户取消了返回手势，恢复原始状态
+                        Log.d(TAG, "Back gesture cancelled")
+                        val decorView = window.decorView
+                        decorView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                    }
+                }
+            )
+        }
 
         setContent {
             var themeMode by remember { mutableStateOf(getThemeMode()) }
