@@ -1,38 +1,32 @@
 package com.chuishui.otheme
 
-import android.content.Context
 import android.util.Log
-import java.io.File
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * 持久化保存主题与模块安装日志，保留最近 MAX_LOGS 条记录。
+ * 持久化保存主题与模块安装日志到 /data/adb/modules/otheme/，保留最近 MAX_LOGS 条记录。
  * 供 LogExporter 读取并合并到诊断日志中。
  */
 object InstallLogStore {
     private const val TAG = "InstallLogStore"
-    private const val DIR_NAME = "install_logs"
+    private const val LOG_DIR = "/data/adb/modules/otheme"
     private const val MAX_LOGS = 10
 
     private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
     private val fileNameFormat = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US)
 
     /**
-     * 保存一次安装日志到磁盘。
-     * @param context 上下文
-     * @param logs 安装过程中的日志行
-     * @param succeeded 是否成功
-     * @param type 日志类型（如 "theme" 或 "module"）
+     * 保存一次安装日志到 /data/adb/modules/otheme/。
      */
-    fun save(context: Context, logs: List<String>, succeeded: Boolean?, type: String = "theme") {
+    fun save(logs: List<String>, succeeded: Boolean?, type: String = "theme") {
         try {
-            val dir = getLogDir(context)
-            dir.mkdirs()
-
             val now = Date()
-            val file = File(dir, "install_${type}_${fileNameFormat.format(now)}.log")
+            val fileName = "install_${type}_${fileNameFormat.format(now)}.log"
+            val filePath = "$LOG_DIR/$fileName"
 
             val sb = StringBuilder()
             sb.appendLine("===== Installation Log =====")
@@ -45,10 +39,13 @@ object InstallLogStore {
                 sb.appendLine(line)
             }
 
-            file.writeText(sb.toString())
-            Log.d(TAG, "Saved install log: ${file.name} (${logs.size} lines)")
+            // 先写到临时文件，再 su cp 到模块目录
+            val tmpPath = "/data/local/tmp/otheme_install_tmp.log"
+            execSuCommand("cat > '$tmpPath' << 'OTHEME_EOF'\n${sb}\nOTHEME_EOF")
+            execSuCommand("cp '$tmpPath' '$filePath' && chmod 644 '$filePath' && rm -f '$tmpPath'")
+            Log.d(TAG, "Saved install log: $fileName (${logs.size} lines)")
 
-            trimOldLogs(dir)
+            trimOldLogs()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save install log", e)
         }
@@ -57,43 +54,47 @@ object InstallLogStore {
     /**
      * 读取所有持久化的安装日志，按时间正序拼接。
      */
-    fun readAll(context: Context): String {
-        val dir = getLogDir(context)
-        if (!dir.exists()) return ""
-
-        val files = dir.listFiles()
-            ?.filter { it.isFile && it.extension == "log" }
-            ?.sortedBy { it.name }
-            ?: return ""
-
+    fun readAll(): String {
+        val files = listLogFiles()
         if (files.isEmpty()) return ""
 
         val sb = StringBuilder()
-        for (file in files) {
-            val content = file.readText().trim()
-            if (content.isNotEmpty()) {
+        for (filePath in files) {
+            val content = execSuCommand("[ -f '$filePath' ] && cat '$filePath' || echo ''")
+            if (content.isNotEmpty() && !content.startsWith("(error:")) {
                 if (sb.isNotEmpty()) sb.appendLine()
-                sb.appendLine(content)
+                sb.appendLine(content.trim())
             }
         }
         return sb.toString().trim()
     }
 
-    private fun getLogDir(context: Context): File {
-        return File(context.filesDir, DIR_NAME)
+    private fun listLogFiles(): List<String> {
+        val output = execSuCommand("ls -1 '$LOG_DIR'/install_*.log 2>/dev/null || echo ''")
+        if (output.isEmpty() || output.startsWith("(error:")) return emptyList()
+        return output.lines().filter { it.isNotBlank() }.sorted()
     }
 
-    private fun trimOldLogs(dir: File) {
-        val files = dir.listFiles()
-            ?.filter { it.isFile && it.extension == "log" }
-            ?.sortedByDescending { it.name }
-            ?: return
-
+    private fun trimOldLogs() {
+        val files = listLogFiles()
         if (files.size > MAX_LOGS) {
-            files.drop(MAX_LOGS).forEach {
-                it.delete()
-                Log.d(TAG, "Trimmed old log: ${it.name}")
+            files.drop(MAX_LOGS).forEach { path ->
+                execSuCommand("rm -f '$path'")
+                Log.d(TAG, "Trimmed old log: $path")
             }
+        }
+    }
+
+    private fun execSuCommand(command: String): String {
+        return try {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val output = reader.readText()
+            process.waitFor()
+            output.trim()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to execute: $command", e)
+            "(error: ${e.message})"
         }
     }
 }

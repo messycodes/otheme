@@ -22,7 +22,7 @@ import java.util.Locale
  */
 object LogExporter {
     private const val TAG = "LogExporter"
-    private const val OTHEME_MODULE_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
+    private const val OTHEME_MODULE_DIR = "/data/adb/modules/otheme/system_ext"
     private const val OTHEME_SYSTEM_DIR = "/system_ext/media/themeInner"
 
     /**
@@ -86,7 +86,7 @@ object LogExporter {
         sb.appendLine(divider)
         sb.appendLine()
 
-        val appLogs = InstallLogStore.readAll(context)
+        val appLogs = InstallLogStore.readAll()
         sb.appendLine(appLogs.ifEmpty { "(no app install logs found)" })
         sb.appendLine()
 
@@ -182,33 +182,8 @@ object LogExporter {
     }
 
     private fun collectThemeLogs(): String {
-        val logPaths = listOf(
-            "/data/theme/install.log",
-            "/data/theme/apply.log",
-            "/data/adb/modules/otheme/system_ext/media/themeInner/install.log",
-            "/data/adb/modules/otheme/system_ext/media/themeInner/theme.log"
-        )
-        val sb = StringBuilder()
-        for (path in logPaths) {
-            val content = execSuCommand("[ -f '$path' ] && cat '$path' || echo ''")
-            if (content.isNotEmpty() && !content.startsWith("(error:")) {
-                sb.appendLine("--- $path ---")
-                sb.appendLine(content)
-                sb.appendLine()
-            }
-        }
-
-        // Fallback: pull OTheme-related logcat entries if no dedicated log files exist
-        if (sb.isEmpty()) {
-            sb.appendLine("[No dedicated log files found, using filtered logcat entries]")
-            sb.appendLine()
-            val logcat = execSuCommand("logcat -d -t 200 | grep -iE 'otheme|theme|module|SuFileOperations|ThemeParser'")
-            if (logcat.isNotEmpty() && !logcat.startsWith("(error:")) {
-                sb.appendLine(logcat)
-            }
-        }
-
-        return sb.toString().trim()
+        val logcat = execSuCommand("logcat -d -t 200 | grep -iE 'otheme|theme|module|SuFileOperations|ThemeParser'")
+        return if (logcat.isNotEmpty() && !logcat.startsWith("(error:")) logcat else ""
     }
 
     private fun collectLogcat(): String {

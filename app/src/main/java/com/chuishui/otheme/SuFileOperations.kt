@@ -20,8 +20,8 @@ enum class RootType {
 object SuFileOperations {
     private const val TAG = "SuFileOperations"
     private const val THEME_DIR = "/data/theme"
-    private const val OTHEME_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
-    private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system_ext/media/themeInner"
+    private const val OTHEME_DIR = "/system_ext/media/themeInner"
+    private const val OTHEME_SYSTEM_DIR = "/data/adb/modules/otheme/system_ext"
 
     /**
      * 执行 su 命令
