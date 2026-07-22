@@ -102,6 +102,9 @@ fun ThemePreviewScreen(
                                         if (!success) {
                                             appendLog("[FAIL] $message")
                                         }
+                                        // 持久化本次安装日志
+                                        val logType = if (message == "MODULE_INSTALLED") "module" else "theme"
+                                        InstallLogStore.save(context, installLogs, success, logType)
                                         clearAppCache(context)
                                     }
                                 )

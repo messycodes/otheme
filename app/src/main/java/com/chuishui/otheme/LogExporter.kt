@@ -80,6 +80,16 @@ object LogExporter {
         sb.appendLine(moduleLogs.ifEmpty { "(no module logs found)" })
         sb.appendLine()
 
+        // ── App Installation Logs (persisted) ──
+        sb.appendLine(divider)
+        sb.appendLine("App Installation Logs (Theme & Module)")
+        sb.appendLine(divider)
+        sb.appendLine()
+
+        val appLogs = InstallLogStore.readAll(context)
+        sb.appendLine(appLogs.ifEmpty { "(no app install logs found)" })
+        sb.appendLine()
+
         // ── Theme Installation Logs ──
         sb.appendLine(divider)
         sb.appendLine("Theme Installation Logs")
