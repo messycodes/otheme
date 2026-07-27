@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,14 +31,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 enum class ThemeMode {
     SYSTEM, LIGHT, DARK
+}
+
+enum class ExecutionMode {
+    SHIZUKU, SU
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +47,7 @@ fun SettingsScreen(
     navController: NavController,
     currentThemeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
-    currentExecutionMode: ExecutionMode = ExecutionMode.MODULE_INJECTION,
+    currentExecutionMode: ExecutionMode = ExecutionMode.SU,
     onExecutionModeChange: (ExecutionMode) -> Unit = {}
 ) {
     Scaffold(
@@ -74,7 +72,6 @@ fun SettingsScreen(
     ) { paddingValues ->
         var showDonateDialog by remember { mutableStateOf(false) }
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
 
         // 获取版本号
         val versionName = try {
@@ -198,12 +195,12 @@ fun SettingsScreen(
 
             // 运行模式分组
             Text(
-                text = "安装模式",
+                text = "运行模式",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-
+            
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -216,25 +213,26 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .selectableGroup()
                 ) {
-                    ThemeModeOption(
-                        title = "模块注入模式",
-                        description = "通过模块注入主题到 system_ext 分区，可能只适用于真系手机",
-                        selected = currentExecutionMode == ExecutionMode.MODULE_INJECTION,
-                        onClick = { onExecutionModeChange(ExecutionMode.MODULE_INJECTION) }
+                    ExecutionModeOption(
+                        title = "Shizuku 模式",
+                        description = "暂不支持，请等待后续更新",
+                        selected = false,
+                        onClick = {
+                            android.widget.Toast.makeText(context, "暂不支持Shizuku，请等待后续更新", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     )
-
+                    
                     HorizontalDivider()
-
-                    ThemeModeOption(
-                        title = "data写入模式",
-                        description = "直接注入/data/theme，无需模块，全版本通用",
-                        selected = currentExecutionMode == ExecutionMode.DATA_THEME,
-                        onClick = { onExecutionModeChange(ExecutionMode.DATA_THEME) }
+                    
+                    ExecutionModeOption(
+                        title = "SU 模式",
+                        description = "直接使用 Root 权限执行命令",
+                        selected = currentExecutionMode == ExecutionMode.SU,
+                        onClick = { onExecutionModeChange(ExecutionMode.SU) }
                     )
                 }
             }
-
-            // 外观分组
+            
             Text(
                 text = "外观",
                 style = MaterialTheme.typography.titleMedium,
@@ -446,63 +444,6 @@ fun SettingsScreen(
                     }
                 }
             }
-
-            // 导出日志卡片
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        scope.launch {
-                            Toast.makeText(context, "正在生成日志...", Toast.LENGTH_SHORT).show()
-                            val logFile = withContext(Dispatchers.IO) {
-                                LogExporter.exportToFile(context)
-                            }
-                            val uri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                logFile
-                            )
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                putExtra(Intent.EXTRA_SUBJECT, "OTheme 诊断日志")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "导出日志"))
-                        }
-                    },
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.BugReport,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "导出日志",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "导出诊断日志用于问题排查",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
         }
 
         // 捐赠对话框
@@ -514,6 +455,43 @@ fun SettingsScreen(
 
 @Composable
 fun ThemeModeOption(
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        RadioButton(
+            selected = selected,
+            onClick = null
+        )
+    }
+}
+
+@Composable
+fun ExecutionModeOption(
     title: String,
     description: String,
     selected: Boolean,
