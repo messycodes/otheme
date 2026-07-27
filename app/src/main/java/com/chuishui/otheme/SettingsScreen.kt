@@ -48,7 +48,9 @@ enum class ThemeMode {
 fun SettingsScreen(
     navController: NavController,
     currentThemeMode: ThemeMode,
-    onThemeModeChange: (ThemeMode) -> Unit
+    onThemeModeChange: (ThemeMode) -> Unit,
+    currentExecutionMode: ExecutionMode = ExecutionMode.MODULE_INJECTION,
+    onExecutionModeChange: (ExecutionMode) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -190,6 +192,44 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            // 运行模式分组
+            Text(
+                text = "安装模式",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectableGroup()
+                ) {
+                    ThemeModeOption(
+                        title = "模块注入模式",
+                        description = "通过 OTheme Magisk/KernelSU/APatch 模块注入主题到 system_ext 分区",
+                        selected = currentExecutionMode == ExecutionMode.MODULE_INJECTION,
+                        onClick = { onExecutionModeChange(ExecutionMode.MODULE_INJECTION) }
+                    )
+
+                    HorizontalDivider()
+
+                    ThemeModeOption(
+                        title = "/data/theme 模式",
+                        description = "直接解压主题到 /data/theme 目录（适用于高版本 Android 或无法使用模块的场景）",
+                        selected = currentExecutionMode == ExecutionMode.DATA_THEME,
+                        onClick = { onExecutionModeChange(ExecutionMode.DATA_THEME) }
                     )
                 }
             }

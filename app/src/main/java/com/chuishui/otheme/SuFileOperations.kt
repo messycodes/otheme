@@ -1,6 +1,7 @@
 package com.chuishui.otheme
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import java.io.File
@@ -30,7 +31,7 @@ object SuFileOperations {
         return "'" + path.replace("'", "'\\''") + "'"
     }
 
-    private fun execSuCommand(command: String): Pair<Int, String> {
+    fun execSuCommand(command: String): Pair<Int, String> {
         return try {
             Log.d(TAG, "Executing: $command")
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
@@ -378,6 +379,144 @@ object SuFileOperations {
         }
     }
     
+    /**
+     * 安装主题到 /data/theme（直接解压模式）
+     * 参考方法中的实现，用于非模块注入场景
+     */
+    fun installThemeToDataTheme(context: Context, themePath: String): String? {
+        Log.d(TAG, "Installing theme to /data/theme from: $themePath")
+
+        return try {
+            execSuCommand("mkdir -p $THEME_DIR")
+
+            // 删除 /data/theme 下所有名字包含 lock 或 icon 的文件和文件夹
+            execSuCommand("find $THEME_DIR -mindepth 1 -maxdepth 1 \\( -iname '*lock*' -o -iname '*icon*' \\) -exec rm -rf {} + 2>/dev/null")
+            Log.d(TAG, "Cleaned up lock/icon files from $THEME_DIR")
+
+            val (_, uidOutput) = execSuCommand("stat -c '%U:%G' /data/data/com.oplus.uxdesign 2>/dev/null || echo 'u0_a240:u0_a240'")
+            val themeStoreOwner = uidOutput.trim().split(":").firstOrNull() ?: "u0_a240"
+            val themeStoreGroup = uidOutput.trim().split(":").lastOrNull() ?: "u0_a240"
+            Log.d(TAG, "Theme store owner: $themeStoreOwner:$themeStoreGroup")
+
+            val (_, checkOutput) = execSuCommand("test -f $THEME_DIR/config && echo 'exists' || echo 'notfound'")
+            val configExists = checkOutput.trim() == "exists"
+
+            if (!configExists) {
+                Log.d(TAG, "Config file not found, copying default config")
+                val tempConfig = File(context.cacheDir, "default_config")
+                context.assets.open("config").use { input ->
+                    FileOutputStream(tempConfig).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                execSuCommand("cp ${tempConfig.absolutePath} $THEME_DIR/config")
+                execSuCommand("chmod 775 $THEME_DIR/config")
+                execSuCommand("chown $themeStoreOwner:$themeStoreGroup $THEME_DIR/config")
+                tempConfig.delete()
+            }
+
+            val (exitCode, output) = execSuCommand(
+                "unzip -o '$themePath' -d $THEME_DIR"
+            )
+
+            if (exitCode != 0) {
+                return "安装失败: $output"
+            }
+
+            val (_, lockscreenCheck) = execSuCommand("test -e $THEME_DIR/lockscreen && echo 'exists' || echo 'notfound'")
+            if (lockscreenCheck.trim() == "exists") {
+                Log.d(TAG, "Renaming lockscreen to lock")
+                execSuCommand("mv $THEME_DIR/lockscreen $THEME_DIR/lock")
+            }
+
+            execSuCommand("chmod -R 775 $THEME_DIR")
+            execSuCommand("chown -R $themeStoreOwner:$themeStoreGroup $THEME_DIR")
+
+            Log.d(TAG, "Theme installation to /data/theme completed")
+            null
+        } catch (e: Exception) {
+            val error = "安装失败: ${e.message}"
+            Log.e(TAG, error, e)
+            error
+        }
+    }
+
+    /**
+     * 从 wallpaper 文件中解包查找壁纸图片
+     * wallpaper 本质上是个 ZIP 文件，跨文件夹搜索 oppo_default_wallpaper.jpg/png
+     * @return 提取后的图片文件路径列表，如果 wallpaper 不存在则返回 null
+     */
+    fun extractWallpaper(context: Context): List<File>? {
+        val wallpaperFile = "$THEME_DIR/wallpaper"
+        Log.d(TAG, "===== Searching wallpaper in $wallpaperFile =====")
+
+        return try {
+            val (_, checkOutput) = execSuCommand("test -f $wallpaperFile && echo 'exists' || echo 'notfound'")
+            val fileExists = checkOutput.trim() == "exists"
+            Log.d(TAG, "wallpaper file exists: $fileExists, checkOutput: '${checkOutput.trim()}'")
+            if (!fileExists) {
+                Log.d(TAG, "wallpaper file not found, skipping")
+                return null
+            }
+
+            val extractDir = File(context.cacheDir, "wallpaper_extract")
+            execSuCommand("rm -rf ${extractDir.absolutePath}")
+            extractDir.mkdirs()
+
+            val (extractExit, extractOutput) = execSuCommand(
+                "cd ${extractDir.absolutePath} && unzip -o '$wallpaperFile' 2>/dev/null && find ${extractDir.absolutePath} -type f -exec chmod 644 {} +"
+            )
+            Log.d(TAG, "Extract to temp exit=$extractExit, output=$extractOutput")
+
+            val resultFiles = extractDir.walkTopDown()
+                .filter { it.isFile }
+                .filter { f ->
+                    val name = f.name.lowercase()
+                    name.contains("oppo_default_wallpaper") &&
+                    (name.endsWith(".jpg") || name.endsWith(".png"))
+                }
+                .map { f ->
+                    val targetFile = File(extractDir, f.name)
+                    if (f != targetFile) f.copyTo(targetFile, overwrite = true)
+                    targetFile
+                }
+                .distinctBy { it.name.lowercase() }
+                .toList()
+
+            Log.d(TAG, "Found ${resultFiles.size} wallpaper images: ${resultFiles.map { it.name }}")
+
+            if (resultFiles.isEmpty()) null else resultFiles
+        } catch (e: Exception) {
+            Log.e(TAG, "Error extracting wallpaper: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * 软重启（热重启），参考 kr-scripts 实现
+     * 通过 am restart 重启 system_server，触发用户空间进程重启
+     */
+    fun softRestartProcesses(packages: List<String>): String? {
+        Log.d(TAG, "===== Starting hot reboot =====")
+
+        return try {
+            val (exitCode, output) = execSuCommand("sync; am restart || busybox killall system_server;")
+
+            if (exitCode == 0) {
+                Log.d(TAG, "Hot reboot triggered successfully")
+                null
+            } else {
+                val error = "热重启失败: $output"
+                Log.e(TAG, error)
+                error
+            }
+        } catch (e: Exception) {
+            val error = "热重启失败: ${e.message}"
+            Log.e(TAG, error, e)
+            error
+        }
+    }
+
     /**
      * 卸载主题（删除 /data/theme 下的所有主题文件，保留 config 和 applying 文件夹）
      */

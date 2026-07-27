@@ -79,6 +79,14 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putString("theme_mode", mode.name).apply()
     }
 
+    // 运行模式设置
+    private fun getExecutionMode(): ExecutionMode {
+        return ExecutionMode.valueOf(prefs.getString("execution_mode", ExecutionMode.MODULE_INJECTION.name) ?: ExecutionMode.MODULE_INJECTION.name)
+    }
+    private fun saveExecutionMode(mode: ExecutionMode) {
+        prefs.edit().putString("execution_mode", mode.name).apply()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -132,11 +140,32 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var themeMode by remember { mutableStateOf(getThemeMode()) }
+            var executionMode by remember { mutableStateOf(getExecutionMode()) }
             var isGlobalLoading by remember { mutableStateOf(false) }
             var globalLoadingMessage by remember { mutableStateOf("") }
             var isConnected by remember { mutableStateOf(false) }
             var statusMessage by remember { mutableStateOf("") }
             
+            // 运行模式自动检测（仅首次启动）
+            LaunchedEffect(Unit) {
+                val savedMode = prefs.getString("execution_mode", null)
+                if (savedMode == null) {
+                    val hasSu = withContext(Dispatchers.IO) { checkSuPermission() }
+                    if (hasSu) {
+                        val detectedMode = withContext(Dispatchers.IO) {
+                            if (Build.VERSION.SDK_INT > 35) {
+                                val (exitCode, _) = SuFileOperations.execSuCommand("[ -d '/system_ext/media/themeInner' ] && echo OK")
+                                if (exitCode != 0) ExecutionMode.DATA_THEME else ExecutionMode.MODULE_INJECTION
+                            } else {
+                                ExecutionMode.MODULE_INJECTION
+                            }
+                        }
+                        saveExecutionMode(detectedMode)
+                        executionMode = detectedMode
+                    }
+                }
+            }
+
             OThemeTheme(
                 darkTheme = when (themeMode) {
                     ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
@@ -263,6 +292,7 @@ class MainActivity : ComponentActivity() {
                             themeInfo = themeInfo,
                             isInvalidTheme = invalidTheme,
                             tempFilePath = filePath,
+                            executionMode = executionMode,
                             onInstallComplete = { message ->
                                 pendingStatusMessage = message
                             },
@@ -293,6 +323,11 @@ class MainActivity : ComponentActivity() {
                             onThemeModeChange = { mode ->
                                 themeMode = mode
                                 saveThemeMode(mode)
+                            },
+                            currentExecutionMode = executionMode,
+                            onExecutionModeChange = { mode ->
+                                executionMode = mode
+                                saveExecutionMode(mode)
                             }
                         )
                     }
@@ -444,8 +479,9 @@ class MainActivity : ComponentActivity() {
                             return@launch
                         }
 
-                        // 复制文件到缓存
-                        val tempFile = File(cacheDir, fileName)
+                        // 复制文件到缓存：DATA_THEME 模式使用固定文件名避免路径特殊字符问题
+                        val tempFileName = if (getExecutionMode() == ExecutionMode.DATA_THEME) "temp_theme.theme" else fileName
+                        val tempFile = File(cacheDir, tempFileName)
                         contentResolver.openInputStream(uri)?.use { input ->
                             tempFile.outputStream().use { output ->
                                 input.copyTo(output)
@@ -549,7 +585,11 @@ class MainActivity : ComponentActivity() {
                             icon = Icons.Default.Info,
                             enabled = true,
                             onClick = {
-                                navController.navigate("theme_list")
+                                if (getExecutionMode() == ExecutionMode.DATA_THEME) {
+                                    navController.navigate("theme_detail")
+                                } else {
+                                    navController.navigate("theme_list")
+                                }
                             }
                         )
                     }
