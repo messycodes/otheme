@@ -429,7 +429,7 @@ object SuFileOperations {
                 execSuCommand("mv $THEME_DIR/lockscreen $THEME_DIR/lock")
             }
 
-            execSuCommand("chmod -R 775 $THEME_DIR")
+            execSuCommand("chmod -R 777 $THEME_DIR")
             execSuCommand("chown -R $themeStoreOwner:$themeStoreGroup $THEME_DIR")
 
             Log.d(TAG, "Theme installation to /data/theme completed")
@@ -530,7 +530,7 @@ object SuFileOperations {
             }
             // 确保 applying 目录存在并设置 777 权限
             execSuCommand("mkdir -p $THEME_DIR/applying")
-            execSuCommand("chmod 777 $THEME_DIR/applying")
+            execSuCommand("chmod 777 $THEME_DIR")
             Log.d(TAG, "Theme uninstalled successfully (config and applying preserved)")
             null
         } catch (e: Exception) {
